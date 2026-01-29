@@ -1,0 +1,12 @@
+---
+/**
+ * Maps Page - Protected Route Example
+ */
+import BaseLayout from '../layouts/BaseLayout.astro'
+import AuthGuard from '../components/AuthGuard.vue'
+---
+
+<BaseLayout title="WOTS - Maps">
+    <!-- AuthGuard จะเช็ค auth และแสดง App component ถ้า authenticated -->
+    <AuthGuard client:load />
+</BaseLayout>

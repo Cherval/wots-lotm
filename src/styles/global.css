@@ -1,0 +1,153 @@
+@import "tailwindcss";
+
+/* =================================================================
+   WHISPER OF THE SHADOW - Global Styles
+   Victorian Era RPG Character Management System
+   ================================================================= */
+
+/* ================= Custom Theme Variables ================= */
+@theme {
+    /* Victorian Color Palette */
+    --color-vic-black: #1a1a1a;
+    --color-vic-gold: #d4af37;
+    --color-vic-cream: #f5e6c8;
+    --color-vic-brown: #5d4037;
+    --color-vic-darkbrown: #3e2723;
+
+    /* Typography */
+    --font-serif: 'Merriweather', serif;
+    --font-thai: 'Sarabun', sans-serif;
+
+    /* Animations */
+    --animate-slide-up: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    --animate-pulse-glow: pulseGlow 2s infinite;
+    --animate-fade-in: fadeIn 0.3s ease-out;
+    --animate-wiggle: wiggle 0.3s ease-in-out infinite;
+}
+
+/* ================= Keyframes ================= */
+@keyframes slideUp {
+    0% { transform: translateY(100%); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes pulseGlow {
+    0%, 100% { box-shadow: 0 0 10px #d4af37; }
+    50% { box-shadow: 0 0 25px #fcd34d; }
+}
+
+@keyframes fadeIn {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+}
+
+@keyframes wiggle {
+    0%, 100% { transform: translate(-50%, -50%) rotate(-3deg); }
+    50% { transform: translate(-50%, -50%) rotate(3deg); }
+}
+
+/* ================= Base Styles ================= */
+body {
+    font-family: 'Sarabun', 'Merriweather', sans-serif;
+    background-color: #0f0f0f;
+    color: #f5e6c8;
+}
+
+h1, h2, h3, .font-serif {
+    font-family: 'Merriweather', serif;
+}
+
+/* ================= Button Components ================= */
+.btn-gold {
+    @apply bg-gradient-to-r from-yellow-700 to-yellow-600 text-white px-4 py-2 rounded
+           border border-yellow-400 cursor-pointer shadow-md
+           flex items-center justify-center gap-2 transition
+           hover:from-yellow-600 hover:to-yellow-500
+           disabled:opacity-50 disabled:cursor-not-allowed disabled:grayscale;
+}
+
+.btn-danger {
+    @apply bg-gradient-to-r from-red-700 to-red-600 text-white px-4 py-2 rounded
+           border border-red-400 cursor-pointer shadow-md
+           flex items-center justify-center gap-2 transition
+           hover:from-red-600 hover:to-red-500
+           disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+/* ================= Input Components ================= */
+.input-vic {
+    @apply bg-neutral-800 border border-yellow-600 text-yellow-100 rounded p-2 w-full
+           focus:outline-none focus:border-yellow-400 placeholder-yellow-700/50;
+}
+
+.input-vic:read-only {
+    @apply bg-neutral-900 text-gray-500 border-gray-700 cursor-not-allowed;
+}
+
+/* ================= Tab Components ================= */
+.tab-btn {
+    @apply px-4 py-2 text-sm font-bold border-b-2 transition-colors flex-1;
+}
+
+.tab-btn.active {
+    @apply border-vic-gold text-vic-gold bg-white/5;
+}
+
+.tab-btn.inactive {
+    @apply border-transparent text-gray-500 hover:text-gray-300;
+}
+
+/* ================= Status Modifiers ================= */
+.status-vip {
+    @apply shadow-[0_0_15px_rgba(212,175,55,0.6)] border-yellow-300;
+    animation: pulseGlow 2s infinite;
+}
+
+.status-hide {
+    @apply grayscale opacity-60 border-gray-600;
+}
+
+.status-die .card-content {
+    @apply blur-sm pointer-events-none select-none grayscale;
+}
+
+/* ================= Custom Scrollbar ================= */
+.custom-scroll::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.custom-scroll::-webkit-scrollbar-track {
+    background: #1a1a1a;
+}
+
+.custom-scroll::-webkit-scrollbar-thumb {
+    background: #5d4037;
+    border-radius: 3px;
+}
+
+.custom-scroll::-webkit-scrollbar-thumb:hover {
+    background: #d4af37;
+}
+
+/* ================= Vue Cloak ================= */
+[v-cloak] {
+    display: none !important;
+}
+
+/* ================= Animation Utilities ================= */
+.animate-slide-up {
+    animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-pulse-glow {
+    animation: pulseGlow 2s infinite;
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.3s ease-out;
+}
+
+.animate-wiggle {
+    animation: wiggle 0.3s ease-in-out infinite;
+}

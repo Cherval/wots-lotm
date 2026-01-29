@@ -1,0 +1,12 @@
+---
+/**
+ * Auth Guard Component
+ * ใช้ wrap content ที่ต้อง authentication
+ */
+import BaseLayout from '../layouts/BaseLayout.astro'
+import AuthGuard from '../components/AuthGuard.vue'
+---
+
+<BaseLayout title="WOTS - Protected Page">
+    <AuthGuard client:load />
+</BaseLayout>
