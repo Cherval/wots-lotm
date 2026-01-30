@@ -25,6 +25,7 @@ import PlayersList from './characters/PlayersList.vue'
 import EnemiesList from './characters/EnemiesList.vue'
 import InventoryView from './economy/InventoryView.vue'
 import ShopView from './economy/ShopView.vue'
+import BrewingView from './brewing/BrewingView.vue'
 import MagicView from './magic/MagicView.vue'
 import MapView from './map/MapView.vue'
 import MapDetailView from './map/MapDetailView.vue'
@@ -38,6 +39,7 @@ import ConfirmModal from './modals/ConfirmModal.vue'
 import UpgradeModal from './modals/UpgradeModal.vue'
 import GrantSpModal from './modals/GrantSpModal.vue'
 import GrantMoneyModal from './modals/GrantMoneyModal.vue'
+import GrantRecipeModal from './modals/GrantRecipeModal.vue'
 import EditCharacterModal from './modals/EditCharacterModal.vue'
 import CharacterDetailModal from './modals/CharacterDetailModal.vue'
 import CharacterListModal from './modals/CharacterListModal.vue'
@@ -96,6 +98,7 @@ const showConfirmModal = ref(false)
 const showUpgradeModal = ref(false)
 const showGrantSpModal = ref(false)
 const showGrantMoneyModal = ref(false)
+const showGrantRecipeModal = ref(false)
 const showCharacterDetail = ref(false)
 const showEditModal = ref(false)
 const showMapConfigModal = ref(false)
@@ -187,8 +190,11 @@ async function handleLogout() {
     window.location.reload()
 }
 
-function onLoginSuccess() {
+async function onLoginSuccess() {
     showToast('ยินดีต้อนรับสู่โลกวิคตอเรียน', 'success', 'Login Success')
+    // Fetch all data after successful login
+    await fetchData(true)
+    isInitialLoad.value = false
 }
 
 function onLoginError(message: string) {
@@ -1081,6 +1087,123 @@ async function handleGrantMoney(amount: number) {
 }
 
 // =============================================================================
+// GRANT RECIPE (ADMIN)
+// =============================================================================
+
+function openGrantRecipeModal() {
+    showGrantRecipeModal.value = true
+}
+
+async function handleGrantRecipe(recipeId: string, playerId: string) {
+    loading.value = true
+
+    try {
+        // Get the recipe item for this recipe
+        const { data: recipeItem, error: itemError } = await supabase
+            .from('items')
+            .select('*')
+            .eq('recipe_id', recipeId)
+            .single()
+
+        if (itemError || !recipeItem) {
+            // Recipe item doesn't exist, create one
+            const { data: recipe } = await supabase
+                .from('recipes')
+                .select('name, description')
+                .eq('id', recipeId)
+                .single()
+
+            if (!recipe) {
+                showToast('ไม่พบสูตรยา', 'error')
+                loading.value = false
+                return
+            }
+
+            // Create recipe item
+            const { data: newItem, error: createError } = await supabase
+                .from('items')
+                .insert({
+                    name: 'สูตร: ' + recipe.name,
+                    description: 'สูตรปรุงยา - ' + recipe.description,
+                    type: 'recipe',
+                    shop_category: 'mysterious',
+                    image_url: 'https://placehold.co/100x100/4a3728/d4af37?text=Recipe',
+                    price_buy: 0,
+                    price_sell: 0,
+                    grid_width: 1,
+                    grid_height: 1,
+                    recipe_id: recipeId
+                })
+                .select()
+                .single()
+
+            if (createError) throw createError
+            
+            // Add to player inventory
+            await addRecipeToInventory(newItem.id, playerId, recipeId)
+        } else {
+            // Recipe item exists, add to inventory
+            await addRecipeToInventory(recipeItem.id, playerId, recipeId)
+        }
+    } catch (error: any) {
+        showToast(error.message, 'error')
+    }
+
+    loading.value = false
+}
+
+async function addRecipeToInventory(itemId: string, playerId: string, recipeId: string) {
+    // Check if player already has this recipe
+    const { data: existing } = await supabase
+        .from('inventory')
+        .select('id')
+        .eq('player_id', playerId)
+        .eq('item_id', itemId)
+        .single()
+
+    if (existing) {
+        showToast('ผู้เล่นมีสูตรนี้อยู่แล้ว', 'error')
+        return
+    }
+
+    // Add to inventory
+    const { error: invError } = await supabase
+        .from('inventory')
+        .insert({
+            player_id: playerId,
+            item_id: itemId,
+            quantity: 1,
+            is_equipped: false
+        })
+
+    if (invError) {
+        showToast(invError.message, 'error')
+        return
+    }
+
+    // Get player and recipe names for log
+    const player = players.value.find((p: Player) => p.id === playerId)
+    const { data: recipe } = await supabase
+        .from('recipes')
+        .select('name')
+        .eq('id', recipeId)
+        .single()
+
+    showToast(`มอบสูตร "${recipe?.name}" ให้ ${player?.character_name} สำเร็จ`, 'success')
+    showGrantRecipeModal.value = false
+
+    // Log the grant
+    await addLog('grant_recipe', {
+        targetId: playerId,
+        targetName: player?.character_name,
+        itemName: recipe?.name,
+        details: { recipeId }
+    })
+
+    await fetchData()
+}
+
+// =============================================================================
 // CHARACTER STATUS
 // =============================================================================
 
@@ -1935,7 +2058,8 @@ async function handleItemSubmit(formData: any) {
             price_buy: formData.price_buy,
             price_sell: formData.price_sell,
             image_url: formData.image_url,
-            effects: JSON.parse(formData.effects || '{}')
+            effects: JSON.parse(formData.effects || '{}'),
+            shop_category: formData.shop_category || null
         }
 
         // Add equipment-specific fields
@@ -2122,6 +2246,18 @@ onMounted(async () => {
                     @edit-item="openEditItem"
                     @delete-item="deleteItem"
                     @buy-item="buyItem"
+                    @grant-recipe="openGrantRecipeModal"
+                />
+
+                <!-- Brewing View -->
+                <BrewingView
+                    v-if="currentView === 'brewing' && currentUser"
+                    :current-user-id="currentUser.id"
+                    :inventory-list="inventoryList"
+                    :is-admin="isAdmin"
+                    @refresh-inventory="fetchEconomyData"
+                    @show-toast="showToast"
+                    @add-log="addLog"
                 />
 
                 <!-- Players List -->
@@ -2275,6 +2411,13 @@ onMounted(async () => {
             :loading="actionLoading.grantMoney"
             @close="showGrantMoneyModal = false"
             @submit="handleGrantMoney"
+        />
+
+        <GrantRecipeModal
+            :show="showGrantRecipeModal"
+            :players="players"
+            @close="showGrantRecipeModal = false"
+            @submit="handleGrantRecipe"
         />
 
         <CharacterListModal

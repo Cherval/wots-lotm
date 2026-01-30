@@ -1,9 +1,11 @@
 <script setup lang="ts">
 /**
  * ShopView.vue
- * Shop/store view component
+ * Shop/store view component with categories and search
  */
+import { ref, computed } from 'vue'
 import type { Item, Player } from '@/lib/constants'
+import { SHOP_CATEGORIES } from '@/lib/constants'
 
 const props = defineProps<{
     currentUser: Player
@@ -17,13 +19,88 @@ const emit = defineEmits<{
     editItem: [item: Item]
     deleteItem: [itemId: string]
     buyItem: [item: Item]
-    checkGridSpace: [item: Item, callback: (canBuy: boolean) => void]
+    grantRecipe: []
 }>()
+
+// Current category tab
+const currentCategory = ref<string>('wizard_guild')
+
+// Search query per category
+const searchQueries = ref<Record<string, string>>({
+    wizard_guild: '',
+    market: '',
+    mysterious: ''
+})
+
+// Current search query
+const currentSearch = computed({
+    get: () => searchQueries.value[currentCategory.value] || '',
+    set: (val) => { searchQueries.value[currentCategory.value] = val }
+})
+
+// Get default category based on item type
+function getDefaultCategory(item: Item): string {
+    switch (item.type) {
+        case 'equipment':
+            return 'wizard_guild'
+        case 'material':
+        case 'consumable':
+            return 'market'
+        default:
+            return 'mysterious'
+    }
+}
+
+// Filter items by category
+const categorizedItems = computed(() => {
+    const categoryMap: Record<string, Item[]> = {
+        wizard_guild: [],
+        market: [],
+        mysterious: []
+    }
+    
+    props.shopList.forEach(item => {
+        // Hide recipe items from shop (they are granted by admin)
+        if (item.type === 'recipe') return
+        
+        const category = item.shop_category || getDefaultCategory(item)
+        if (categoryMap[category]) {
+            categoryMap[category].push(item)
+        } else {
+            categoryMap.mysterious.push(item) // fallback
+        }
+    })
+    
+    return categoryMap
+})
+
+// Filter items by search
+const filteredItems = computed(() => {
+    const items = categorizedItems.value[currentCategory.value] || []
+    const query = currentSearch.value.toLowerCase().trim()
+    
+    if (!query) return items
+    
+    return items.filter(item => 
+        item.name.toLowerCase().includes(query) ||
+        item.description.toLowerCase().includes(query) ||
+        item.type.toLowerCase().includes(query)
+    )
+})
+
+// Get item count for each category
+const categoryCounts = computed(() => {
+    return {
+        wizard_guild: categorizedItems.value.wizard_guild.length,
+        market: categorizedItems.value.market.length,
+        mysterious: categorizedItems.value.mysterious.length
+    }
+})
 
 // Check if item can fit in grid
 function canFitInGrid(item: Item): boolean {
-    if (item.type !== 'equipment') return true // Non-equipment items don't need grid space
-    if (!props.gridSpaceInfo) return true // No grid info available, allow purchase
+    if (item.type !== 'equipment') return true
+    if (!props.gridSpaceInfo) return true
     
     const itemSize = (item.grid_width || 1) * (item.grid_height || 1)
     return props.gridSpaceInfo.cells >= itemSize
@@ -31,12 +108,7 @@ function canFitInGrid(item: Item): boolean {
 
 // Handle buy button click
 function handleBuyClick(item: Item) {
-    if (item.type === 'equipment' && !canFitInGrid(item)) {
-        // Will be handled by App.vue with proper toast
-        emit('buyItem', item) // Let App.vue handle the check
-    } else {
-        emit('buyItem', item)
-    }
+    emit('buyItem', item)
 }
 
 // Get buy button state
@@ -51,7 +123,7 @@ function getBuyButtonState(item: Item): { disabled: boolean; text: string; class
     
     if (item.type === 'equipment' && !canFitInGrid(item)) {
         return { 
-            disabled: true, // Now truly disabled
+            disabled: true,
             text: '📦 กระเป๋าเต็ม!', 
             class: 'bg-red-900 text-red-300 cursor-not-allowed border-red-700' 
         }
@@ -70,7 +142,7 @@ function getBuyButtonState(item: Item): { disabled: boolean; text: string; class
         <!-- Header -->
         <div class="flex justify-between items-center mb-6 bg-vic-darkbrown p-4 rounded border border-vic-brown">
             <div>
-                <h2 class="text-2xl text-vic-gold font-bold font-serif">ร้านค้า</h2>
+                <h2 class="text-2xl text-vic-gold font-bold font-serif">🏪 ร้านค้า</h2>
                 <div class="flex gap-4 mt-1">
                     <p class="text-xs text-gray-400">
                         เงินคงเหลือ: 
@@ -85,19 +157,84 @@ function getBuyButtonState(item: Item): { disabled: boolean; text: string; class
                     </p>
                 </div>
             </div>
-            <button 
-                v-if="isAdmin" 
-                @click="emit('addItem')" 
-                class="btn-gold text-sm"
+            <div v-if="isAdmin" class="flex gap-2">
+                <button 
+                    @click="emit('grantRecipe')" 
+                    class="px-4 py-2 bg-purple-800 hover:bg-purple-700 text-purple-100 rounded border border-purple-500 text-sm font-bold flex items-center gap-2"
+                >
+                    📜 มอบสูตรยา
+                </button>
+                <button 
+                    @click="emit('addItem')" 
+                    class="btn-gold text-sm"
+                >
+                    + เพิ่มสินค้า
+                </button>
+            </div>
+        </div>
+
+        <!-- Category Tabs -->
+        <div class="flex gap-2 mb-4 overflow-x-auto pb-2">
+            <button
+                v-for="cat in SHOP_CATEGORIES"
+                :key="cat.key"
+                @click="currentCategory = cat.key"
+                class="flex items-center gap-2 px-4 py-3 rounded-lg border-2 transition whitespace-nowrap"
+                :class="{
+                    'bg-vic-gold/20 border-vic-gold text-vic-gold': currentCategory === cat.key,
+                    'bg-black/40 border-gray-700 text-gray-400 hover:border-gray-500': currentCategory !== cat.key
+                }"
             >
-                + เพิ่มสินค้า
+                <span class="text-lg">{{ cat.label.split(' ')[0] }}</span>
+                <span class="font-bold">{{ cat.label.split(' ').slice(1).join(' ') }}</span>
+                <span class="text-xs px-2 py-0.5 rounded-full bg-black/40">
+                    {{ categoryCounts[cat.key as keyof typeof categoryCounts] }}
+                </span>
             </button>
         </div>
 
+        <!-- Category Description -->
+        <div class="mb-4 text-sm text-gray-400">
+            {{ SHOP_CATEGORIES.find(c => c.key === currentCategory)?.description }}
+        </div>
+
+        <!-- Search Bar -->
+        <div class="mb-6 relative">
+            <input
+                v-model="currentSearch"
+                type="text"
+                placeholder="🔍 ค้นหาสินค้า..."
+                class="input-vic w-full md:w-96 pl-4"
+            />
+            <button
+                v-if="currentSearch"
+                @click="currentSearch = ''"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+            >
+                ✕
+            </button>
+        </div>
+
+        <!-- Empty State -->
+        <div 
+            v-if="filteredItems.length === 0"
+            class="text-center py-12 bg-black/20 rounded-lg border border-gray-800"
+        >
+            <div class="text-4xl mb-3">
+                {{ currentSearch ? '🔍' : '📦' }}
+            </div>
+            <p class="text-gray-400">
+                {{ currentSearch ? 'ไม่พบสินค้าที่ค้นหา' : 'ไม่มีสินค้าในหมวดนี้' }}
+            </p>
+        </div>
+
         <!-- Shop Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div 
+            v-else
+            class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
+        >
             <div 
-                v-for="item in shopList" 
+                v-for="item in filteredItems" 
                 :key="item.id" 
                 class="bg-black border border-vic-gold/30 rounded overflow-hidden hover:shadow-[0_0_15px_rgba(212,175,55,0.3)] transition flex flex-col group relative"
             >

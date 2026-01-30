@@ -75,14 +75,27 @@ export const ACTION_LABELS: Record<string, string> = {
     'item_buy': '🛒 ซื้อไอเทม',
     'item_sell': '💰 ขายไอเทม',
     'bank_deposit': '🏦 ฝากเงิน',
-    'bank_withdraw': '🏦 ถอนเงิน'
+    'bank_withdraw': '🏦 ถอนเงิน',
+    'brewing_success': '🧪 ปรุงยาสำเร็จ',
+    'brewing_failed': '💨 ปรุงยาล้มเหลว',
+    'grant_recipe': '📜 มอบสูตรยา'
 }
+
+// Shop Categories
+export const SHOP_CATEGORIES = [
+    { key: 'wizard_guild', label: '🧙 ชุมนุมผู้วิเศษ', description: 'อาวุธ ชุด และอุปกรณ์' },
+    { key: 'market', label: '🏪 ตลาด', description: 'วัตถุดิบ ของกิน ของใช้ทั่วไป' },
+    { key: 'mysterious', label: '🔮 ร้านค้าลึกลับ', description: 'ของพิเศษและสิ่งลึกลับ' }
+] as const
+
+export type ShopCategory = 'wizard_guild' | 'market' | 'mysterious'
 
 // Navigation Items
 export const NAV_ITEMS = [
     { key: 'dashboard', label: 'หน้าหลัก', icon: null, adminOnly: false },
     { key: 'inventory', label: '🎒 กระเป๋า', icon: null, adminOnly: false },
     { key: 'shop', label: '🛒 ร้านค้า', icon: null, adminOnly: false },
+    { key: 'brewing', label: '🧪 ปรุงยา', icon: null, adminOnly: false },
     { key: 'players', label: 'ผู้เล่น', icon: null, adminOnly: false },
     { key: 'enemies', label: 'ศัตรู', icon: null, adminOnly: false },
     { key: 'magic', label: 'เวทย์', icon: null, adminOnly: true },
@@ -150,8 +163,10 @@ export interface Item {
     id: string
     name: string
     description: string
-    type: 'consumable' | 'equipment' | 'material' | 'special'
+    type: 'consumable' | 'equipment' | 'material' | 'special' | 'recipe'
     slot_type?: 'weapon' | 'head' | 'body' | 'accessory' | null  // Equipment slot type
+    shop_category?: 'wizard_guild' | 'market' | 'mysterious'  // Shop category
+    recipe_id?: string  // For recipe items - links to the recipe
     image_url: string
     price_buy: number
     price_sell: number
@@ -221,4 +236,88 @@ export interface TransactionLog {
     amount?: number
     details?: Record<string, any>
     created_at: string
+}
+
+// ================= BREWING SYSTEM TYPES =================
+
+export interface Recipe {
+    id: string
+    name: string
+    description?: string
+    image_url?: string
+    result_item_id: string
+    result_quantity: number
+    difficulty: 'easy' | 'normal' | 'hard' | 'expert'
+    tolerance_percent: number
+    created_at?: string
+    updated_at?: string
+    created_by?: string
+    // Joined data
+    result_item?: Item
+    steps?: RecipeStep[]
+}
+
+export interface RecipeStep {
+    id: string
+    recipe_id: string
+    step_order: number
+    step_type: 'set_fire' | 'add_ingredient' | 'simmer'
+    fire_level?: number          // 0-3 สำหรับ set_fire
+    item_id?: string             // สำหรับ add_ingredient
+    amount?: number              // กรัม หรือ มล.
+    unit?: 'ml' | 'g' | 'piece'  // หน่วย
+    duration_seconds?: number    // วินาที สำหรับ simmer
+    description?: string
+    created_at?: string
+    // Joined data
+    item?: Item
+}
+
+export interface BrewingSession {
+    id: string
+    player_id: string
+    recipe_id?: string
+    status: 'in_progress' | 'success' | 'failed'
+    started_at: string
+    completed_at?: string
+    player_steps: PlayerBrewingStep[]
+    accuracy_score?: number
+    result_message?: string
+}
+
+export interface PlayerBrewingStep {
+    step_type: 'set_fire' | 'add_ingredient' | 'simmer'
+    fire_level?: number
+    item_id?: string
+    item_name?: string
+    amount?: number
+    unit?: string
+    duration_seconds?: number
+    timestamp: number
+}
+
+// Brewing Step Types for UI
+export type BrewingStepType = 'set_fire' | 'add_ingredient' | 'simmer'
+
+// Difficulty labels in Thai
+export const DIFFICULTY_LABELS: Record<string, string> = {
+    'easy': '🟢 ง่าย',
+    'normal': '🟡 ปานกลาง',
+    'hard': '🟠 ยาก',
+    'expert': '🔴 เชี่ยวชาญ'
+}
+
+// Unit labels in Thai
+export const UNIT_LABELS: Record<string, string> = {
+    'ml': 'มล.',
+    'g': 'กรัม',
+    'piece': 'ชิ้น'
+}
+
+// Fire level labels
+export const FIRE_LEVEL_LABELS: Record<number, string> = {
+    0: '🔵 ปิด',
+    1: '🟡 ไฟอ่อน',
+    2: '🟠 ไฟปานกลาง',
+    3: '🔴 ไฟแรง'
 }

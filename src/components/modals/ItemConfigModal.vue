@@ -75,6 +75,21 @@
                 <option value="equipment">⚔️ Equipment (อุปกรณ์)</option>
                 <option value="material">📦 Material (วัตถุดิบ)</option>
                 <option value="special">✨ Special (พิเศษ)</option>
+                <option value="recipe">📜 Recipe (สูตรยา)</option>
+              </select>
+            </div>
+
+            <!-- Shop Category -->
+            <div>
+              <label class="text-xs text-gray-400 block mb-1 uppercase font-bold">หมวดหมู่ร้านค้า</label>
+              <select 
+                v-model="form.shop_category"
+                class="w-full bg-black/50 border border-vic-brown rounded px-3 py-2 text-vic-cream focus:border-vic-gold outline-none"
+              >
+                <option value="">-- ไม่ระบุ (แสดงทุกหมวด) --</option>
+                <option value="wizard_guild">🏰 ชุมนุมผู้วิเศษ</option>
+                <option value="market">🏪 ตลาด</option>
+                <option value="mysterious">🌙 ร้านค้าลึกลับ</option>
               </select>
             </div>
 
@@ -452,6 +467,7 @@ interface ItemForm {
   description: string
   type: string
   slot_type: string
+  shop_category: string
   grid_width: number
   grid_height: number
   price_buy: number
@@ -479,6 +495,7 @@ const form = ref<ItemForm>({
   description: '',
   type: 'consumable',
   slot_type: '',
+  shop_category: '',
   grid_width: 1,
   grid_height: 1,
   price_buy: 0,
@@ -509,6 +526,7 @@ watch(() => props.item, (newItem) => {
       description: newItem.description || '',
       type: newItem.type || 'consumable',
       slot_type: newItem.slot_type || '',
+      shop_category: newItem.shop_category || '',
       grid_width: newItem.grid_width || 1,
       grid_height: newItem.grid_height || 1,
       price_buy: newItem.price_buy || 0,
@@ -522,6 +540,7 @@ watch(() => props.item, (newItem) => {
       description: '',
       type: 'consumable',
       slot_type: '',
+      shop_category: '',
       grid_width: 1,
       grid_height: 1,
       price_buy: 0,
@@ -541,6 +560,7 @@ watch(() => props.show, (newVal) => {
       description: '',
       type: 'consumable',
       slot_type: '',
+      shop_category: '',
       grid_width: 1,
       grid_height: 1,
       price_buy: 0,

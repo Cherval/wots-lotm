@@ -151,3 +151,55 @@ h1, h2, h3, .font-serif {
 .animate-wiggle {
     animation: wiggle 0.3s ease-in-out infinite;
 }
+
+/* ================= Brewing System Styles ================= */
+@keyframes bubble {
+    0% {
+        transform: translateY(0) scale(0.5);
+        opacity: 0;
+    }
+    50% {
+        opacity: 0.8;
+    }
+    100% {
+        transform: translateY(-20px) scale(1);
+        opacity: 0;
+    }
+}
+
+@keyframes steam {
+    0% {
+        opacity: 0;
+        transform: translateY(0) scale(0.8);
+    }
+    50% {
+        opacity: 0.5;
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(-40px) scale(1.2);
+    }
+}
+
+@keyframes flicker {
+    0%, 100% {
+        transform: scaleY(1) scaleX(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scaleY(1.1) scaleX(0.9);
+        opacity: 0.9;
+    }
+}
+
+.animate-bubble {
+    animation: bubble 1.5s ease-in-out infinite;
+}
+
+.animate-steam {
+    animation: steam 2s ease-out infinite;
+}
+
+.animate-flicker {
+    animation: flicker 0.5s ease-in-out infinite alternate;
+}
