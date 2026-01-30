@@ -41,28 +41,35 @@ export async function initializeAuth() {
 
   try {
     // Try to get session from Supabase
-    const { data: { session } } = await supabase.auth.getSession()
+    const { data: { session }, error } = await supabase.auth.getSession()
     
-    if (session) {
+    // If there's an error (like invalid refresh token), clear stored session
+    if (error) {
+      console.warn('Auth session error, clearing stored session:', error.message)
+      localStorage.removeItem(AUTH_STORAGE_KEY)
+      authStore.session = null
+      authStore.user = null
+    } else if (session) {
       authStore.session = session
       authStore.user = session.user
       saveAuthToStorage(session)
     } else {
-      // Try to load from localStorage as fallback
-      const storedSession = loadAuthFromStorage()
-      if (storedSession && storedSession.expires_at) {
-        const expiresAt = new Date(storedSession.expires_at)
-        if (expiresAt > new Date()) {
-          authStore.session = storedSession
-          authStore.user = storedSession.user
-        } else {
-          localStorage.removeItem(AUTH_STORAGE_KEY)
-        }
-      }
+      // No session from Supabase, clear any stale localStorage data
+      localStorage.removeItem(AUTH_STORAGE_KEY)
+      authStore.session = null
+      authStore.user = null
     }
 
     // Listen for auth changes
     supabase.auth.onAuthStateChange((event, session) => {
+      // Handle sign out or token errors
+      if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED' && !session) {
+        authStore.session = null
+        authStore.user = null
+        localStorage.removeItem(AUTH_STORAGE_KEY)
+        return
+      }
+      
       authStore.session = session
       authStore.user = session?.user || null
       saveAuthToStorage(session)

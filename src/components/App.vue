@@ -4,7 +4,7 @@
  * Main Application Component
  * Whisper of the Shadow - Victorian Era RPG Character Management System
  */
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import type { Player, Enemy, Pathway, Sequence, Item, InventoryItem, Toast } from '@/lib/constants'
 import { supabase, getRoleLabel, calculateModifier } from '@/lib/supabase'
 import { authStore, initializeAuth } from '../stores/auth'
@@ -191,9 +191,18 @@ async function handleLogout() {
 }
 
 async function onLoginSuccess() {
+    console.log('[Login] Success - authStore.user:', authStore.user)
+    console.log('[Login] Success - authStore.session:', !!authStore.session)
+    
+    // Wait for Vue reactivity to update
+    await nextTick()
+    
     showToast('ยินดีต้อนรับสู่โลกวิคตอเรียน', 'success', 'Login Success')
+    
     // Fetch all data after successful login
+    console.log('[Login] Fetching data...')
     await fetchData(true)
+    console.log('[Login] Data fetched - currentUser:', currentUser.value)
     isInitialLoad.value = false
 }
 
@@ -215,7 +224,18 @@ async function fetchData(showSpinner = true) {
             loading.value = true
         }
 
-        const { data: { user } } = await supabase.auth.getUser()
+        // Use authStore.user directly instead of getUser() to avoid race condition after login
+        let user = authStore.user
+        
+        // Fallback: if authStore.user is not set, try to get from Supabase directly
+        if (!user) {
+            console.log('[fetchData] authStore.user is null, trying getUser()...')
+            const { data: { user: supaUser } } = await supabase.auth.getUser()
+            user = supaUser
+            console.log('[fetchData] getUser() result:', user?.id)
+        } else {
+            console.log('[fetchData] Using authStore.user:', user.id)
+        }
 
         // Fetch Pathways & Sequences
         const { data: pathData } = await supabase.from('pathways').select('*').order('name')
@@ -2156,6 +2176,23 @@ function deleteItem(itemId: string) {
 // =============================================================================
 // LIFECYCLE
 // =============================================================================
+
+// Watch for auth state changes (login/logout)
+watch(
+    () => authStore.session,
+    async (newSession, oldSession) => {
+        console.log('[Watch] Auth session changed:', !!oldSession, '->', !!newSession)
+        
+        // User just logged in (session changed from null to valid)
+        if (newSession && !oldSession) {
+            console.log('[Watch] User logged in, fetching data...')
+            showToast('ยินดีต้อนรับสู่โลกวิคตอเรียน', 'success', 'Login Success')
+            await fetchData(true)
+            console.log('[Watch] Data fetched - currentUser:', currentUser.value?.character_name)
+            isInitialLoad.value = false
+        }
+    }
+)
 
 onMounted(async () => {
     // Initialize global auth store

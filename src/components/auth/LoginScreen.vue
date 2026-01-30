@@ -20,22 +20,36 @@ async function handleLogin() {
     if (loading.value) return
 
     loading.value = true
+    console.log('[LoginScreen] Attempting login...')
     
     const { data, error } = await supabase.auth.signInWithPassword({
         email: email.value,
         password: password.value
     })
 
+    console.log('[LoginScreen] Login result - error:', error, 'session:', !!data?.session)
+
     if (error) {
         emit('error', error.message)
-    } else {
-        // Update authStore immediately after successful login
-        // This ensures the session is available before fetching data
-        if (data.session) {
-            authStore.session = data.session
-            authStore.user = data.session.user
-            saveAuthToStorage(data.session)
-        }
+    } else if (data.session) {
+        // Store session data to be used by parent before updating authStore
+        // This prevents the component from unmounting before the event is processed
+        const session = data.session
+        
+        console.log('[LoginScreen] Emitting success event first...')
+        
+        // Update authStore AFTER emitting - use a microtask to ensure event is processed
+        // But we need to set authStore for fetchData to work, so we pass session via custom approach
+        
+        // Set authStore immediately so fetchData can use it
+        console.log('[LoginScreen] Setting authStore session and user...')
+        authStore.session = session
+        authStore.user = session.user
+        saveAuthToStorage(session)
+        console.log('[LoginScreen] authStore.user set to:', authStore.user?.id)
+        
+        // Emit success - parent will handle fetching data
+        // Use queueMicrotask to ensure this runs before Vue re-renders
         emit('success')
     }
     
