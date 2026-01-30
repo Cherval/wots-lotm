@@ -5,6 +5,7 @@
  */
 import { ref } from 'vue'
 import { supabase } from '@/lib/supabase'
+import { authStore, saveAuthToStorage } from '@/stores/auth'
 
 const emit = defineEmits<{
     success: []
@@ -20,7 +21,7 @@ async function handleLogin() {
 
     loading.value = true
     
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
         email: email.value,
         password: password.value
     })
@@ -28,6 +29,13 @@ async function handleLogin() {
     if (error) {
         emit('error', error.message)
     } else {
+        // Update authStore immediately after successful login
+        // This ensures the session is available before fetching data
+        if (data.session) {
+            authStore.session = data.session
+            authStore.user = data.session.user
+            saveAuthToStorage(data.session)
+        }
         emit('success')
     }
     
