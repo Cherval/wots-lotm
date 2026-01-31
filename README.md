@@ -87,6 +87,10 @@ npm run dev
 
 ### 5. Database Setup
 รันไฟล์ SQL ในโฟลเดอร์ `database/` เพื่อสร้าง Table และ Trigger ที่จำเป็น:
+
+> **แนะนำ**: รันไฟล์ `init_full_database.sql` เพียงไฟล์เดียวเพื่อสร้างฐานข้อมูลทั้งหมด (Tables, Indexes, Triggers, Policies)
+
+หากต้องการรันแยกส่วน (สำหรับการอัพเดท):
 *   `brewing_schema.sql`
 *   `shop_categories_schema.sql`
 *   `add_map_lock_column.sql`
@@ -123,4 +127,4 @@ npm run dev
 
 ---
 
-> **Note**: โปรเจกต์นี้เป็นส่วนหนึ่งของงานอดิเรกและการสร้างสรรค์ (My Art Work) ห้ามนำไปใช้ในเชิงพาณิชย์โดยไม่ได้รับอนุญาต
+> **Note**: โปรเจกต์นี้เป็นส่วนหนึ่งของงานอดิเรกและการสร้างสรรค์ (My Art Work) สร้างขึ้นโดย AI 90% Claude Opus 4.5 & GEMINI 3 PRO
