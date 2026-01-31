@@ -1,43 +1,126 @@
-# Astro Starter Kit: Minimal
+# Whisper of the Shadow (เสียงเพรียกแห่งเงามืด)
 
-```sh
-npm create astro@latest -- --template minimal
+**Whisper of the Shadow** คือระบบจัดการตัวละคร (Character Management System - CMS) สไตล์ Victorian Era RPG Web Application พัฒนาด้วย **Astro** และ **Vue 3** เชื่อมต่อฐานข้อมูล **Supabase** ออกแบบมาเพื่อสนับสนุนการเล่น Role-playing ในธีมลึกลับ สอบสวน และไสยศาสตร์
+
+![Project Banner](public/icons/icon-512x512.png)
+
+## 🌟 ฟีเจอร์หลัก (Features)
+
+### 🎭 การจัดการตัวละคร (Character Management)
+*   **Stats & Attributes**: แสดงสถานะหลัก (STR, AGI, INT, etc.) พร้อมตัวคำนวณ Modifier อัตโนมัติ
+*   **Combat Stats**: คำนวณ ATK, AC, HP และ Skill Points (SP)
+*   **Profile Editing**:
+    *   ผู้เล่นสามารถแก้ไขรูปโปรไฟล์ของตนเองได้ (รองรับ Direct URL)
+    *   Admin สามารถแก้ไขข้อมูลตัวละครของผู้เล่นทุกคนได้ละเอียด (Stats, Money, Role)
+*   **Skill System**: ตารางสกิล (Athletics, Arcana, etc.) ที่อิงตามค่าสถานะ
+
+### 💰 ระบบเศรษฐกิจ (Economy System)
+*   **Currency**: ระบบเงิน 2 กระเป๋า (เงินสดติดตัว และ เงินในธนาคาร)
+*   **Banking**: ฝาก-ถอนเงินผ่านธนาคาร (ป้องกันการถูกขโมยหรือสูญหายถ้ามีระบบ Death Penalty ในอนาคต)
+*   **Inventory**: จัดการไอเทมในกระเป๋า ดูรายละเอียด และสวมใส่
+*   **Shop**: ร้านค้าสำหรับซื้อไอเทม และขายไอเทมคืน
+*   **Transfers**:
+    *   โอนเงินให้ผู้เล่นอื่น
+    *   โอนไอเทมให้ผู้เล่นอื่น
+
+### 🗺️ ระบบแผนที่และการเดินทาง (Map & Exploration)
+*   **Interactive Map**: แผนที่แบบตอบสนอง (Interactive Canvas)
+*   **Movement System**:
+    *   **Stamina System**: ใช้ค่า Stamina (Move Token) ในการเคลื่อนที่
+    *   **Cost**: วางตัวละครข้ามแมพ (-3 Stamina), ย้ายตำแหน่งในแมพเดิม (-1 Stamina)
+    *   **Wriggle Effect**: อนิเมชั่น "ส่ายไปมา" เมื่อเข้าสู่โหมดเคลื่อนย้าย
+    *   **Safety Lock**: ป้องกันการลากผิดตำแหน่ง ต้องกดปุ่ม "ย้ายตำแหน่ง" ก่อนเสมอ
+*   **Admin Map Controls**:
+    *   **Lock Map**: ล็อคแผนที่เพื่อหยุดเวลา หรือป้องกันผู้เล่นขยับตัวขณะดำเนินเนื้อเรื่อง
+    *   **Edit Mode**: จัดวางตำแหน่ง NPC/Enemy ได้อย่างอิสระ
+    *   **Fog/Visibility**: (อนาคต)
+
+### 🔮 ระบบเวทมนตร์และเส้นทาง (Magic & Progression)
+*   **Pathways & Sequences**: รองรับระบบคลาสอาชีพแบบลำดับขั้น (Sequence 9 ถึง 0)
+*   **Admin Management**: สร้างและแก้ไข Pathway และ Sequence ได้ผ่าน UI
+*   **Upgrade System**: ใช้ Skill Points (SP) ในการอัพเกรดหรือเลื่อนลำดับขั้น
+
+### 🧪 ระบบปรุงยา (Brewing)
+*   **Real-time Brewing**: ระบบจับเวลาปรุงยาแบบ Real-time
+*   **Recipes**: คลังสูตรยาที่ Admin สามารถเพิ่ม/ลบได้
+*   **Process**: ขั้นตอนการปรุงที่ต้องอาศัยความแม่นยำ (ใส่ส่วนผสม, ควบคุมไฟ, คนหม้อ)
+
+### 🛠️ เครื่องมือสำหรับ Admin (Dungeon Master Tools)
+*   **Grant Resources**: เสกเงิน, SP, ไอเทม, หรือ Stamina ให้ผู้เล่น
+*   **User Management**: จัดการ Role (Player, Assistant, Dungeon Master)
+*   **Log System**: ดูประวัติการทำธุรกรรมและการกระทำต่างๆ ในระบบ (การโอน, การซื้อขาย, การแก้ไขข้อมูล)
+
+---
+
+## 🛠️ Tech Stack
+
+*   **Frontend**: [Astro](https://astro.build/) + [Vue.js 3](https://vuejs.org/)
+*   **Styling**: [Tailwind CSS](https://tailwindcss.com/) (Custom Theme: Victorian/Gold/Dark)
+*   **Backend/Database**: [Supabase](https://supabase.com/) (PostgreSQL + Auth + Realtime)
+*   **Type Safety**: TypeScript
+
+## 🚀 การติดตั้งและรันโปรเจกต์ (Installation)
+
+### 1. Prerequisites
+*   Node.js (v18+)
+*   NPM หรือ PNPM
+*   Supabase Project
+
+### 2. Setup Environment Variables
+สร้างไฟล์ `.env` ที่ root project และใส่ค่า Key ของ Supabase:
+
+```env
+PUBLIC_SUPABASE_URL=your_supabase_project_url
+PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+### 3. Install Dependencies
+```bash
+npm install
+```
 
-## 🚀 Project Structure
+### 4. Run Development Server
+```bash
+npm run dev
+```
+เปิด Browser ไปที่ `http://localhost:4321`
 
-Inside of your Astro project, you'll see the following folders and files:
+### 5. Database Setup
+รันไฟล์ SQL ในโฟลเดอร์ `database/` เพื่อสร้าง Table และ Trigger ที่จำเป็น:
+*   `brewing_schema.sql`
+*   `shop_categories_schema.sql`
+*   `add_map_lock_column.sql`
+*   `add_map_position_percent_columns.sql`
+*   `add_move_token_column.sql`
+*   `auto_create_player_trigger.sql` (สำคัญสำหรับการสร้างตัวละครใหม่อัตโนมัติเมื่อ Login)
+*   `enable_profile_update_policy.sql` (สำหรับอนุญาตให้ User แก้ไขรูปตัวเอง)
+
+---
+
+## 📂 โครงสร้างโปรเจกต์ (Project Structure)
 
 ```text
 /
-├── public/
+├── database/           # SQL Scripts สำหรับ Database Schema
+├── public/             # Static Assets (Images, Icons)
 ├── src/
-│   └── pages/
-│       └── index.astro
+│   ├── components/     # Vue Components
+│   │   ├── auth/       # Login Screen
+│   │   ├── brewing/    # Brewing System
+│   │   ├── characters/ # Character Lists & Cards
+│   │   ├── dashboard/  # Stats & Main Dashboard
+│   │   ├── economy/    # Shop, Inventory, Bank
+│   │   ├── layout/     # Header, Navbar
+│   │   ├── map/        # Map View & Detail
+│   │   ├── modals/     # All Modals (Grant, Edit, Confirm)
+│   │   └── ui/         # Reusable UI Elements
+│   ├── layouts/        # Astro Layouts
+│   ├── lib/            # Utilities & Constants (Supabase Client)
+│   ├── pages/          # Astro Pages (Routing)
+│   └── styles/         # Global CSS & Tailwind Directives
 └── package.json
 ```
 
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
+---
 
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
-
-Any static assets, like images, can be placed in the `public/` directory.
-
-## 🧞 Commands
-
-All commands are run from the root of the project, from a terminal:
-
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
-
-## 👀 Want to learn more?
-
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+> **Note**: โปรเจกต์นี้เป็นส่วนหนึ่งของงานอดิเรกและการสร้างสรรค์ (My Art Work) ห้ามนำไปใช้ในเชิงพาณิชย์โดยไม่ได้รับอนุญาต
