@@ -22,6 +22,7 @@ const emit = defineEmits<{
     edit: [player: Player]
     grantMoney: [player: Player]
     grantSp: [player: Player]
+    grantStamina: [player: Player]
     changeStatus: [playerId: string, status: string]
     delete: [playerId: string]
     viewDetail: [player: Player]
@@ -58,6 +59,7 @@ const emit = defineEmits<{
                 @edit="emit('edit', $event)"
                 @grant-money="emit('grantMoney', $event)"
                 @grant-sp="emit('grantSp', $event)"
+                @grant-stamina="emit('grantStamina', $event)"
                 @change-status="(playerId: string, status: string) => emit('changeStatus', playerId, status)"
                 @delete="emit('delete', $event)"
                 @view-detail="emit('viewDetail', $event)"

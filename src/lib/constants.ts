@@ -118,6 +118,7 @@ export interface Player {
     money: number
     bank_balance: number
     skill_points: number
+    move_token: number
     role: 'player' | 'assistant' | 'dungeon_master'
     status: 'active' | 'vip' | 'hide' | 'die'
     str: number
@@ -212,6 +213,7 @@ export interface MapData {
     name: string
     description: string
     image_url: string
+    is_locked?: boolean
 }
 
 export interface MapPosition {

@@ -16,6 +16,7 @@ const emit = defineEmits<{
     logout: []
     upgrade: []
     install: []
+    editProfile: []
 }>()
 </script>
 
@@ -69,6 +70,13 @@ const emit = defineEmits<{
                         {{ getRoleLabel(currentUser?.role || 'player') }}
                     </p>
                 </div>
+                <button 
+                    @click="emit('editProfile')"
+                    class="text-xs text-yellow-400 hover:text-yellow-300 border border-yellow-700 p-1 rounded hover:bg-yellow-900/30"
+                    title="แก้ไขรูปโปรไฟล์"
+                >
+                    ✏️
+                </button>
                 <button 
                     @click="emit('logout')"
                     class="text-xs text-red-400 hover:text-red-300 border border-red-900 p-1 rounded hover:bg-red-900/30"

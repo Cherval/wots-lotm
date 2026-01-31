@@ -40,6 +40,8 @@ import UpgradeModal from './modals/UpgradeModal.vue'
 import GrantSpModal from './modals/GrantSpModal.vue'
 import GrantMoneyModal from './modals/GrantMoneyModal.vue'
 import GrantRecipeModal from './modals/GrantRecipeModal.vue'
+import GrantStaminaModal from './modals/GrantStaminaModal.vue'
+import UpdateProfileImageModal from './modals/UpdateProfileImageModal.vue'
 import EditCharacterModal from './modals/EditCharacterModal.vue'
 import CharacterDetailModal from './modals/CharacterDetailModal.vue'
 import CharacterListModal from './modals/CharacterListModal.vue'
@@ -99,6 +101,8 @@ const showUpgradeModal = ref(false)
 const showGrantSpModal = ref(false)
 const showGrantMoneyModal = ref(false)
 const showGrantRecipeModal = ref(false)
+const showGrantStaminaModal = ref(false)
+const showUpdateProfileImageModal = ref(false)
 const showCharacterDetail = ref(false)
 const showEditModal = ref(false)
 const showMapConfigModal = ref(false)
@@ -165,6 +169,14 @@ const isSuperAdmin = computed(() => {
 const getMapCharacters = computed(() => {
     if (!currentMap.value) return []
     return mapPositions.value.filter((pos: any) => pos.map_id === currentMap.value.id)
+})
+
+// Check if current player is already on the current map
+const isPlayerOnMap = computed(() => {
+    if (!currentMap.value || !currentUser.value) return false
+    return mapPositions.value.some(
+        (pos: any) => pos.map_id === currentMap.value.id && pos.player_id === currentUser.value?.id
+    )
 })
 
 // =============================================================================
@@ -355,6 +367,39 @@ async function fetchEconomyData() {
         .eq('player_id', currentUser.value.id)
         .order('updated_at')
     inventoryList.value = invData || []
+}
+
+// =============================================================================
+// PROFILE MANAGEMENT
+// =============================================================================
+
+async function handleUpdateProfileImage(newUrl: string) {
+    if (!currentUser.value) return
+    
+    try {
+        const { error } = await supabase
+            .from('players')
+            .update({ 
+                character_img_url: newUrl,
+                source_url: newUrl 
+            })
+            .eq('id', currentUser.value.id)
+
+        if (error) throw error
+
+        // Update local state
+        currentUser.value.character_img_url = newUrl
+        
+        // Also update in players list
+        const idx = players.value.findIndex((p: Player) => p.id === currentUser.value?.id)
+        if (idx !== -1) {
+            players.value[idx].character_img_url = newUrl
+        }
+
+        showToast('อัปเดตรูปโปรไฟล์เรียบร้อยแล้ว')
+    } catch (err: any) {
+        showToast('ไม่สามารถอัปเดตรูปโปรไฟล์ได้: ' + err.message, 'error')
+    }
 }
 
 // =============================================================================
@@ -796,8 +841,19 @@ function deleteMap(mapId: string) {
 // MAP DRAG & DROP
 // =============================================================================
 
+// Check if user can drag a character
+function canDragCharacter(char: any): boolean {
+    // Admin in edit mode can drag anyone
+    if (isAdmin.value && isMapEditMode.value) return true
+    // Map is locked - no player can drag
+    if (currentMap.value?.is_locked) return false
+    // Player can only drag themselves
+    return char.id === currentUser.value?.id
+}
+
 function startDrag(event: MouseEvent, char: any) {
-    if (!isMapEditMode.value) return
+    // Check if user can drag this character
+    if (!canDragCharacter(char)) return
     
     // Set initial drag position to character's current position
     dragPosition.value = {
@@ -810,6 +866,12 @@ function startDrag(event: MouseEvent, char: any) {
 
 function onDrag(event: MouseEvent) {
     if (!draggingCharacter.value || !currentMap.value) return
+    
+    // Re-check permissions during drag
+    if (!canDragCharacter(draggingCharacter.value)) {
+        draggingCharacter.value = null
+        return
+    }
 
     const mapElement = (event.target as HTMLElement).closest('[data-map]') as HTMLElement
     if (!mapElement) return
@@ -830,6 +892,21 @@ function endDrag() {
     // Find position by matching the character id
     const posIndex = mapPositions.value.findIndex((p: any) => p.id === draggingCharacter.value.id)
     if (posIndex !== -1) {
+        // Check if this is the current player (not admin) moving themselves
+        const isPlayerMovingSelf = !isAdmin.value && draggingCharacter.value.id === currentUser.value?.id
+        
+        if (isPlayerMovingSelf) {
+            // Check if player has enough stamina
+            if ((currentUser.value?.move_token ?? 0) < 1) {
+                showToast('Stamina ไม่พอ! ต้องการ 1 หน่วยเพื่อเคลื่อนที่', 'error')
+                draggingCharacter.value = null
+                return
+            }
+            
+            // Deduct 1 token for moving within map
+            deductMoveToken(1)
+        }
+        
         // Update local state
         mapPositions.value[posIndex].pos_x_percent = dragPosition.value.x
         mapPositions.value[posIndex].pos_y_percent = dragPosition.value.y
@@ -839,6 +916,21 @@ function endDrag() {
     }
 
     draggingCharacter.value = null
+}
+
+// Deduct move tokens from current player
+async function deductMoveToken(amount: number) {
+    if (!currentUser.value || isAdmin.value) return
+    
+    const newTokens = Math.max(0, (currentUser.value.move_token ?? 0) - amount)
+    
+    const { error } = await supabase.from('players')
+        .update({ move_token: newTokens })
+        .eq('id', currentUser.value.id)
+    
+    if (!error) {
+        currentUser.value.move_token = newTokens
+    }
 }
 
 async function savePosition(pos: any) {
@@ -874,6 +966,140 @@ async function removePosition(posId: string | undefined) {
 function handleMapClick(event: MouseEvent) {
     // Placeholder for adding character to map
     // Will implement in next phase
+}
+
+// Toggle map lock status (Admin only)
+async function toggleMapLock() {
+    if (!currentMap.value || !isAdmin.value) return
+    
+    const newLockStatus = !currentMap.value.is_locked
+    
+    const { error } = await supabase.from('maps')
+        .update({ is_locked: newLockStatus })
+        .eq('id', currentMap.value.id)
+    
+    if (error) {
+        showToast('ไม่สามารถเปลี่ยนสถานะล็อคได้', 'error')
+    } else {
+        currentMap.value.is_locked = newLockStatus
+        // Update in mapsList as well
+        const mapIndex = mapsList.value.findIndex((m: any) => m.id === currentMap.value.id)
+        if (mapIndex !== -1) {
+            mapsList.value[mapIndex].is_locked = newLockStatus
+        }
+        showToast(newLockStatus ? '🔒 ล็อคแผนที่แล้ว' : '🔓 ปลดล็อคแผนที่แล้ว', 'success')
+        
+        await addLog(newLockStatus ? 'lock_map' : 'unlock_map', {
+            itemName: currentMap.value.name,
+            details: { mapId: currentMap.value.id }
+        })
+    }
+}
+
+// Place current player on the map (Player only)
+async function placeSelfOnMap() {
+    if (!currentMap.value || !currentUser.value || isAdmin.value) return
+    if (currentMap.value.is_locked) {
+        showToast('แผนที่นี้ถูกล็อค ไม่สามารถวางตัวละครได้', 'error')
+        return
+    }
+    
+    // Check if already on this map
+    if (isPlayerOnMap.value) {
+        showToast('คุณอยู่บนแผนที่นี้แล้ว', 'error')
+        return
+    }
+    
+    // Check stamina - need 3 tokens to move to another map
+    if ((currentUser.value.move_token ?? 0) < 3) {
+        showToast('Stamina ไม่พอ! ต้องการ 3 หน่วยเพื่อข้ามแผนที่', 'error')
+        return
+    }
+    
+    // Check if player exists on another map (due to unique_player_location constraint)
+    const existingPosition = mapPositions.value.find(
+        (pos: any) => pos.player_id === currentUser.value?.id
+    )
+    
+    if (existingPosition) {
+        // Player is on another map - update their position to this map
+        const { data, error } = await supabase.from('map_positions')
+            .update({
+                map_id: currentMap.value.id,
+                pos_x: 50,
+                pos_y: 50,
+                pos_x_percent: 50,
+                pos_y_percent: 50
+            })
+            .eq('id', existingPosition.pos_id)
+            .select()
+            .single()
+        
+        if (error) {
+            showToast('ไม่สามารถย้ายตัวละครได้: ' + error.message, 'error')
+        } else {
+            // Deduct 3 tokens for cross-map travel
+            await deductMoveToken(3)
+            
+            // Remove from old position in local state
+            mapPositions.value = mapPositions.value.filter(
+                (pos: any) => pos.pos_id !== existingPosition.pos_id
+            )
+            // Add to new position
+            mapPositions.value.push({
+                ...data,
+                ...currentUser.value,
+                pos_id: data.id,
+                id: currentUser.value.id,
+                character_name: currentUser.value.character_name || currentUser.value.name,
+                character_img_url: currentUser.value.character_img_url,
+                is_enemy: false
+            })
+            showToast('📍 ย้ายตัวละครมาแผนที่นี้แล้ว (-3 Stamina)', 'success')
+            
+            await addLog('move_self_to_map', {
+                itemName: currentMap.value.name,
+                details: { mapId: currentMap.value.id, staminaCost: 3 }
+            })
+        }
+    } else {
+        // Player is not on any map - create new position (still costs 3 tokens as first placement)
+        const { data, error } = await supabase.from('map_positions')
+            .insert({
+                map_id: currentMap.value.id,
+                player_id: currentUser.value.id,
+                pos_x: 50,
+                pos_y: 50,
+                pos_x_percent: 50,
+                pos_y_percent: 50
+            })
+            .select()
+            .single()
+        
+        if (error) {
+            showToast('ไม่สามารถวางตัวละครได้: ' + error.message, 'error')
+        } else {
+            // Deduct 3 tokens for first placement
+            await deductMoveToken(3)
+            
+            // Add to local state with character data
+            mapPositions.value.push({
+                ...data,
+                ...currentUser.value,
+                pos_id: data.id,
+                id: currentUser.value.id,
+                character_name: currentUser.value.character_name || currentUser.value.name,
+                character_img_url: currentUser.value.character_img_url,
+                is_enemy: false
+            })
+            showToast('📍 วางตัวละครบนแผนที่แล้ว (-3 Stamina)', 'success')
+            
+            await addLog('place_self_on_map', {
+                itemName: currentMap.value.name,
+                details: { mapId: currentMap.value.id, staminaCost: 3 }
+            })
+        }
+    }
 }
 
 function viewCharacterDetail(char: any) {
@@ -1058,6 +1284,46 @@ async function handleGrantSp(amount: number) {
             targetName: grantTarget.value.character_name,
             amount: amount,
             details: { newSP: newSP }
+        })
+        
+        await fetchData()
+    }
+
+    actionLoading.value.grant = false
+}
+
+// =============================================================================
+// GRANT STAMINA (ADMIN)
+// =============================================================================
+
+function openGrantStaminaModal(player: Player) {
+    grantTarget.value = player
+    showGrantStaminaModal.value = true
+}
+
+async function handleGrantStamina(amount: number) {
+    if (!grantTarget.value) return
+
+    actionLoading.value.grant = true
+
+    const newStamina = (grantTarget.value.move_token || 0) + amount
+
+    const { error } = await supabase.from('players')
+        .update({ move_token: newStamina })
+        .eq('id', grantTarget.value.id)
+
+    if (error) {
+        showToast(error.message, 'error')
+    } else {
+        showToast(`🏃 มอบ ${amount} Stamina ให้ ${grantTarget.value.character_name} สำเร็จ`, 'success')
+        showGrantStaminaModal.value = false
+        
+        // Log the grant
+        await addLog('grant_stamina', {
+            targetId: grantTarget.value.id,
+            targetName: grantTarget.value.character_name,
+            amount: amount,
+            details: { newStamina: newStamina }
         })
         
         await fetchData()
@@ -2228,6 +2494,7 @@ onMounted(async () => {
                 :current-user="currentUser"
                 @logout="handleLogout"
                 @upgrade="openUpgradeModal()"
+                @edit-profile="showUpdateProfileImageModal = true"
             />
 
             <!-- Navigation -->
@@ -2311,6 +2578,7 @@ onMounted(async () => {
                     @embed="openEmbedModal"
                     @grant-money="openGrantMoneyModal"
                     @grant-sp="openGrantSpModal"
+                    @grant-stamina="openGrantStaminaModal"
                     @change-status="changeStatus"
                     @edit="editPlayer"
                     @delete="deletePlayer"
@@ -2347,6 +2615,7 @@ onMounted(async () => {
                     v-if="currentView === 'map'"
                     :maps="mapsList"
                     :current-user-id="currentUser?.id"
+                    :is-admin="isAdmin"
                     @create-map="openCreateMap"
                     @view-map="handleMapView"
                     @edit-map="openEditMap"
@@ -2370,8 +2639,12 @@ onMounted(async () => {
                     :current-user-id="currentUser?.id"
                     :dragging-character="draggingCharacter"
                     :drag-position="dragPosition"
+                    :is-player-on-map="isPlayerOnMap"
+                    :move-token="currentUser?.move_token ?? 0"
                     @back="currentView = 'map'; isMapEditMode = false"
                     @toggle-edit-mode="isMapEditMode = !isMapEditMode"
+                    @toggle-lock="toggleMapLock"
+                    @place-self="placeSelfOnMap"
                     @view-character="viewCharacterDetail"
                     @remove-position="removePosition"
                     @start-drag="startDrag"
@@ -2448,6 +2721,21 @@ onMounted(async () => {
             :loading="actionLoading.grantMoney"
             @close="showGrantMoneyModal = false"
             @submit="handleGrantMoney"
+        />
+
+        <GrantStaminaModal
+            :show="showGrantStaminaModal"
+            :target="grantTarget"
+            :loading="actionLoading.grant"
+            @close="showGrantStaminaModal = false"
+            @submit="handleGrantStamina"
+        />
+
+        <UpdateProfileImageModal
+            :show="showUpdateProfileImageModal"
+            :current-url="currentUser?.character_img_url || ''"
+            @close="showUpdateProfileImageModal = false"
+            @confirm="handleUpdateProfileImage"
         />
 
         <GrantRecipeModal

@@ -3,7 +3,7 @@
  * BrewingView.vue
  * Main brewing view - Potion brewing system with drag & drop
  */
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import type { Recipe, RecipeStep, InventoryItem, Item, PlayerBrewingStep } from '@/lib/constants'
 import { DIFFICULTY_LABELS, UNIT_LABELS, FIRE_LEVEL_LABELS } from '@/lib/constants'
 import { supabase } from '@/lib/supabase'
@@ -136,7 +136,19 @@ async function fetchRecipes() {
 
 onMounted(() => {
     fetchRecipes()
+    window.addEventListener('beforeunload', handleBeforeUnload)
 })
+
+onUnmounted(() => {
+    window.removeEventListener('beforeunload', handleBeforeUnload)
+})
+
+function handleBeforeUnload(e: BeforeUnloadEvent) {
+    if (isBrewing.value) {
+        e.preventDefault()
+        e.returnValue = ''
+    }
+}
 
 // ================= BREWING ACTIONS =================
 
@@ -767,6 +779,15 @@ async function deleteRecipe(recipeId: string) {
                     />
 
                     <!-- Progress Bar -->
+
+                    <!-- Warning Message -->
+                    <div v-if="isBrewing" class="mt-4 p-2 bg-red-900/30 border border-red-700/50 rounded flex gap-2 items-start animate-pulse">
+                        <span class="text-lg">⚠️</span>
+                        <p class="text-xs text-red-200/80 leading-tight pt-1">
+                            ห้ามปิดหน้าต่างหรือรีเฟรชขณะปรุงยา<br>
+                            ความคืบหน้าจะหายไป (แต่ไอเทมจะไม่หาย)
+                        </p>
+                    </div>
                     <div class="mt-4">
                         <div class="flex justify-between text-sm text-gray-400 mb-1">
                             <span>ความคืบหน้า</span>

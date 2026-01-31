@@ -19,6 +19,7 @@ const emit = defineEmits<{
     edit: [player: Player]
     grantMoney: [player: Player]
     grantSp: [player: Player]
+    grantStamina: [player: Player]
     changeStatus: [playerId: string, status: string]
     delete: [playerId: string]
     viewDetail: [player: Player]
@@ -74,6 +75,12 @@ function getJobTitle(pathwayName: string, seqNum: number): string {
                     class="bg-purple-900/90 text-purple-200 p-1.5 rounded hover:bg-purple-800 text-xs border border-purple-500 shadow flex items-center gap-1 w-full justify-center"
                 >
                     🎁 SP
+                </button>
+                <button 
+                    @click="emit('grantStamina', player)" 
+                    class="bg-cyan-900/90 text-cyan-200 p-1.5 rounded hover:bg-cyan-800 text-xs border border-cyan-500 shadow flex items-center gap-1 w-full justify-center"
+                >
+                    🏃 Stamina
                 </button>
                 <button 
                     @click="emit('edit', player)" 
